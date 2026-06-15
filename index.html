@@ -48,22 +48,23 @@
 
     header h1 { font-size: 1.25rem; font-weight: 700; }
 
-    .backup-bar {
+    .sync-bar {
       background: #0d2137;
       border-bottom: 1px solid var(--border);
-      padding: 8px 16px;
+      padding: 10px 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 10px;
     }
-    .backup-bar span { font-size: 0.72rem; color: var(--muted); flex: 1; }
-    .backup-btn {
+    .sync-bar span { font-size: 0.72rem; color: var(--muted); flex: 1; }
+    .sync-btns { display: flex; gap: 8px; flex-shrink: 0; }
+    .sync-btn {
       background: var(--card);
       border: 1px solid var(--border);
       color: var(--text);
       border-radius: 20px;
-      padding: 5px 14px;
+      padding: 6px 14px;
       font-size: 0.78rem;
       font-weight: 600;
       cursor: pointer;
@@ -71,7 +72,8 @@
       font-family: inherit;
       -webkit-tap-highlight-color: transparent;
     }
-    .backup-btn:active { opacity: 0.7; }
+    .sync-btn.primary { background: #1a4a2a; border-color: var(--green); color: var(--green); }
+    .sync-btn:active { opacity: 0.7; }
 
     .toast {
       position: fixed;
@@ -259,10 +261,14 @@
   <h1>Budget Tracker</h1>
 </header>
 
-<div class="backup-bar">
-  <span>Tap to copy a backup link — paste it in Notes to never lose data</span>
-  <button class="backup-btn" onclick="copyBackupLink()">Copy Link</button>
+<div class="sync-bar">
+  <span>Save your data to a file — load it on any device</span>
+  <div class="sync-btns">
+    <button class="sync-btn" onclick="loadFromFile()">Load</button>
+    <button class="sync-btn primary" onclick="saveToFile()">Save</button>
+  </div>
 </div>
+<input type="file" id="file-input" accept=".json" style="display:none" onchange="handleFileLoad(event)" />
 
 <div class="summary">
   <div class="balance-label">Money Available</div>
@@ -368,21 +374,43 @@
     if (encoded) history.replaceState(null, '', '#' + encoded);
   }
 
-  // --- Backup ---
-  function copyBackupLink() {
-    const url = location.href;
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(url).then(() => showToast('Backup link copied! Paste it in Notes.'));
-    } else {
-      const el = document.createElement('textarea');
-      el.value = url;
-      el.style.cssText = 'position:fixed;top:-9999px';
-      document.body.appendChild(el);
-      el.select();
-      document.execCommand('copy');
-      document.body.removeChild(el);
-      showToast('Backup link copied! Paste it in Notes.');
-    }
+  // --- Save / Load file ---
+  function saveToFile() {
+    const data = load();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'budget-backup.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Saved! Store the file in iCloud or Google Drive.');
+  }
+
+  function loadFromFile() {
+    document.getElementById('file-input').click();
+  }
+
+  function handleFileLoad(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (data && Array.isArray(data.income) && Array.isArray(data.expenses)) {
+          save(data);
+          render();
+          showToast('Data loaded successfully!');
+        } else {
+          showToast('Invalid backup file.');
+        }
+      } catch(err) {
+        showToast('Could not read file.');
+      }
+      e.target.value = '';
+    };
+    reader.readAsText(file);
   }
 
   function showToast(msg) {
