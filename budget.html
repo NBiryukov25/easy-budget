@@ -25,11 +25,15 @@
       --safe-bot: env(safe-area-inset-bottom, 0px);
     }
 
+    html { height: 100%; }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
       background: var(--bg);
       color: var(--text);
-      min-height: 100dvh;
+      min-height: 100%;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
       padding-bottom: calc(var(--safe-bot) + 90px);
     }
 
